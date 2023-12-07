@@ -13,6 +13,9 @@ impl Rule for BulletsHitEnemiesRule {
                 if x_range.contains(&bullet.position.x) && y_range.contains(&bullet.position.y) {
                     bullet.health -= 1;
 
+                    if enemy.health == 0 {
+                        continue;
+                    }
                     enemy.health -= 1;
                 }
             }

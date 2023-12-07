@@ -7,7 +7,7 @@ mod move_enemies;
 
 use crate::world::World;
 
-pub trait Rule {
+pub trait Rule: Send + Sync {
     fn apply(&mut self, world: &mut World);
 }
 

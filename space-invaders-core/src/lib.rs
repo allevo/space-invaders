@@ -1,14 +1,18 @@
 use rules::Rule;
-use world::*;
 
 mod rules;
 mod world;
+mod levels;
+
+pub use world::*;
+pub use rules::*;
+pub use levels::*;
 
 pub struct Game {
     rules: Vec<Box<dyn Rule>>,
 }
 impl Game {
-    fn tick(&mut self, world: &mut World) {
+    pub fn tick(&mut self, world: &mut World) {
         for rule in &mut self.rules {
             rule.apply(world);
         }

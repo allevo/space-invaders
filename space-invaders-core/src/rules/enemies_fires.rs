@@ -2,7 +2,7 @@ use crate::world::{Bullet, BulletId, Position, Velocity, World};
 
 use super::Rule;
 
-pub trait RandomInRange {
+pub trait RandomInRange: Send + Sync {
     fn random_boolean(&mut self, min: u32, max: u32) -> Option<u32>;
 }
 pub struct RandomlyEnemyFireBulletsRule {
