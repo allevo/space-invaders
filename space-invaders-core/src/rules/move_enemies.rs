@@ -1,4 +1,6 @@
-use crate::world::World;
+#![allow(implied_bounds_entailment)]
+
+use crate::{world::World, Tick, Changes};
 
 use super::Rule;
 
@@ -24,17 +26,16 @@ impl Direction {
 }
 
 pub struct MoveEnemiesRule {
-    pub ticks: u32,
     pub direction: Direction,
 }
 impl Rule for MoveEnemiesRule {
-    fn apply(&mut self, world: &mut World) {
+    fn apply(&mut self, world: &mut World, tick: &Tick) -> (Option<Vec<Changes>>, Option<Vec<Box<dyn Rule>>>, bool) {
         // This is wrong.
         // TODO: leverage the map width
         let max = 10;
         let mut y_delta = 0;
 
-        if self.ticks > 0 && self.ticks % max == 0 {
+        if tick.0 > 0 && tick.0 % max == 0 {
             self.direction = self.direction.opposite();
             y_delta = 1;
         }
@@ -45,6 +46,6 @@ impl Rule for MoveEnemiesRule {
             enemy.position.y += y_delta;
         }
 
-        self.ticks += 1;
+        (Some(vec![crate::Changes::EnemiesMove]), None, false)
     }
 }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::*;
 
-pub fn level1() -> (World, Game) {
+pub fn level1() -> (World, Game, TickGenerator) {
     let mut world = World {
         map: Map {
             width: 150,
@@ -11,6 +11,10 @@ pub fn level1() -> (World, Game) {
         enemies: Vec::new(),
         spaceship: Spaceship {
             position: Position { x: 75, y: 0 },
+            dimension: Dimension {
+                width: 1,
+                height: 1,
+            },
             health: 100,
             gun: Gun {},
         },
@@ -18,6 +22,7 @@ pub fn level1() -> (World, Game) {
         bullet_count: 0,
     };
     world.enemies.push(Enemy {
+        id: EnemyId(0),
         position: Position { x: 75, y: 299 },
         dimension: Dimension {
             width: 1,
@@ -36,13 +41,19 @@ pub fn level1() -> (World, Game) {
 
     let game = Game {
         rules: vec![
-            Box::new(MoveEnemiesRule { ticks: 0, direction: Direction::Right }),
-            Box::new(RandomlyEnemyFireBulletsRule { random_boolean: Box::new(R {}) }),
+            /*
+            Box::new(MoveEnemiesRule {
+                direction: Direction::Right,
+            }),
+            Box::new(EnemiesFireBulletsRule {
+                random_boolean: Box::new(R {}),
+            }),
+            */
             Box::new(OutOfMapBulletsRule {}),
-            Box::new(BulletDeadRule {}),
+            Box::new(BulletsDeadRule {}),
             Box::new(BulletsHitEnemiesRule {}),
         ],
     };
 
-    (world, game)
+    (world, game, TickGenerator::new())
 }
