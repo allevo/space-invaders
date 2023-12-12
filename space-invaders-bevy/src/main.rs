@@ -15,6 +15,11 @@ struct GreetTimer(Timer);
 struct SpaceshipComponent;
 
 #[derive(Component)]
+struct EnemyComponent {
+    id: space_invaders_core::EnemyId,
+}
+
+#[derive(Component)]
 struct BulletComponent {
     id: BulletId,
 }
@@ -26,10 +31,12 @@ const BULLET_Z: f32 = 2.0;
 fn run_tick(
     mut commands: Commands,
     mut space_invaders: ResMut<SpaceInvadersResource>,
-    mut spaceship: Query<&mut Transform, (With<SpaceshipComponent>, Without<BulletComponent>)>,
-    mut bullets: Query<(Entity, &BulletComponent, &mut Transform), Without<SpaceshipComponent>>,
+    mut spaceship: Query<&mut Transform, (With<SpaceshipComponent>, Without<BulletComponent>, Without<EnemyComponent>)>,
+    mut bullets: Query<(Entity, &BulletComponent, &mut Transform), (Without<SpaceshipComponent>, Without<EnemyComponent>)>,
+    mut enemies: Query<(Entity, &EnemyComponent, &mut Transform), (Without<SpaceshipComponent>, Without<BulletComponent>)>,
     asset_server: Res<AssetServer>,
 ) {
+    println!("----------");
     let space_invaders = &mut *space_invaders;
     let changes = space_invaders.game.tick(&mut space_invaders.world, space_invaders.tick_generator.tick());
 
@@ -53,6 +60,7 @@ fn run_tick(
                 }
             }
             Changes::SpaceshipShoot(bullet_id) => {
+                println!("bullet position {:?}", space_invaders.world.bullets[&bullet_id].position);
                 commands.spawn((
                     SpriteBundle {
                         texture: asset_server.load("bullet.png"),
@@ -80,7 +88,40 @@ fn run_tick(
                     BULLET_Z
                 );
             }
-            _ => {}
+            Changes::EnemiesDead(enemy_ids) => {
+                for (entity, enemy, _) in enemies.iter() {
+                    if enemy_ids.contains(&enemy.id) {
+                        commands.entity(entity).despawn_recursive();
+                    }
+                }
+            }
+            Changes::EnemiesMove => {
+                for (_, enemy, mut transform) in enemies.iter_mut() {
+                    let enemy = &space_invaders.world.enemies[&enemy.id];
+
+                    transform.translation = to_bevy_coords(
+                        &space_invaders.world,
+                        &enemy.position,
+                        &enemy.dimension,
+                        ENEMY_Z
+                    );
+                }
+            }
+            Changes::NewEnemyBullet(bullet_id) => {
+                commands.spawn((
+                    SpriteBundle {
+                        texture: asset_server.load("bullet.png"),
+                        transform: Transform::from_translation(to_bevy_coords(
+                            &space_invaders.world,
+                            &space_invaders.world.bullets[&bullet_id].position,
+                            &Dimension { width: 1, height: 1 },
+                            BULLET_Z,
+                        )),
+                        ..default()
+                    },
+                    BulletComponent { id: bullet_id },
+                ));
+            }
         };
     }
 }
@@ -153,6 +194,60 @@ fn setup(
 ) {
     commands.spawn(Camera2dBundle::default());
 
+    /*
+    println!("setup {}", to_bevy_coords(
+        &space_invaders.world,
+        &space_invaders.world.spaceship.position,
+        &space_invaders.world.spaceship.dimension,
+        SPACESHIP_Z,
+    ));
+
+    commands.spawn((
+        SpriteBundle {
+            texture: asset_server.load("enemy.png"),
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, 0.0),
+                scale: Vec3::new(1.0 / 16.0, 1.0 / 16.0, 1.0),
+                ..default()
+            },
+            ..default()
+        },
+    ));
+
+
+    commands.spawn((
+        SpriteBundle {
+            texture: asset_server.load("enemy.png"),
+            transform: Transform {
+                translation: to_bevy_coords(
+                    &space_invaders.world,
+                    &space_invaders.world.spaceship.position,
+                    &space_invaders.world.spaceship.dimension,
+                    SPACESHIP_Z,
+                ),
+                scale: Vec3::new(1.0 / 16.0, 1.0 / 16.0, 1.0),
+                ..default()
+            },
+            ..default()
+        },
+        SpaceshipComponent,
+    ));
+
+
+    commands.spawn((
+        SpriteBundle {
+            texture: asset_server.load("enemy.png"),
+            transform: Transform {
+                translation: Vec3::new(75.0, 0.0, 0.0),
+                scale: Vec3::new(1.0 / 16.0, 1.0 / 16.0, 1.0),
+                ..default()
+            },
+            ..default()
+        },
+        SpaceshipComponent,
+    ));
+    */
+
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("spaceship.png"),
@@ -160,7 +255,7 @@ fn setup(
                 &space_invaders.world,
                 &space_invaders.world.spaceship.position,
                 &space_invaders.world.spaceship.dimension,
-                SPACESHIP_Z,
+                -1.0,
             )),
             ..default()
         },
@@ -168,8 +263,8 @@ fn setup(
     ));
 
     let enemy_texture_handle = asset_server.load("enemy.png");
-    for enemy in &space_invaders.world.enemies {
-        commands.spawn(SpriteBundle {
+    for enemy in space_invaders.world.enemies.values() {
+        commands.spawn((SpriteBundle {
             texture: enemy_texture_handle.clone(),
             transform: Transform::from_translation(to_bevy_coords(
                 &space_invaders.world,
@@ -178,7 +273,7 @@ fn setup(
                 ENEMY_Z,
             )),
             ..default()
-        });
+        }, EnemyComponent { id: enemy.id }));
     }
 }
 
@@ -188,8 +283,8 @@ fn to_bevy_coords(
     dimension: &Dimension,
     z: f32,
 ) -> Vec3 {
-    let x = position.x as f32 - (world.map.width as f32 / 2.0) - (dimension.width as f32 / 2.0);
-    let y = position.y as f32 - (world.map.height as f32 / 2.0) - (dimension.height as f32 / 2.0);
+    let x = position.x as f32 + (dimension.width as f32 / 2.0); //  - (world.map.width as f32 / 2.0); // ;
+    let y = position.y as f32 + (dimension.height as f32 / 2.0); // - (world.map.height as f32 / 2.0) ;
 
     Vec3::new(x, y, z)
 }

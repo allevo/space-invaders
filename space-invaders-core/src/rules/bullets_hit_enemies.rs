@@ -1,6 +1,6 @@
 #![allow(implied_bounds_entailment)]
 
-use crate::{world::World, Tick, Changes};
+use crate::{world::World, Tick, Changes, Effects};
 
 use super::Rule;
 
@@ -10,7 +10,7 @@ impl Rule for BulletsHitEnemiesRule {
         tick.0 % 2 == 0
     }
 
-    fn apply(&mut self, world: &mut World, _tick: &Tick) -> (Option<Vec<Changes>>, Option<Vec<Box<dyn Rule>>>, bool) {
+    fn apply(&mut self, world: &mut World, _tick: &Tick, effects: &mut Effects) -> bool {
         let mut enemies_to_remove = vec![];
 
         for bullet in world.bullets.values_mut() {
@@ -18,7 +18,7 @@ impl Rule for BulletsHitEnemiesRule {
                 continue;
             }
 
-            for enemy in &mut world.enemies {
+            for enemy in world.enemies.values_mut() {
                 let x_range = enemy.position.x..(enemy.position.x + enemy.dimension.width);
                 let y_range = enemy.position.y..(enemy.position.y + enemy.dimension.height);
 
@@ -26,23 +26,24 @@ impl Rule for BulletsHitEnemiesRule {
                     println!("BulletsHitEnemiesRule: a bullet hits the enemy {:?}", enemy.id);
                     bullet.health -= 1;
 
+                    if enemy.health > 0 {
+                        enemy.health -= 1;
+                    }
+
                     if enemy.health == 0 {
                         enemies_to_remove.push(enemy.id);
                         continue;
                     }
-                    enemy.health -= 1;
                 }
             }
         }
 
         if enemies_to_remove.is_empty() {
-            return (None, None, false);
+            return false
         }
 
-        let changes = vec![crate::Changes::EnemiesDead(enemies_to_remove)];
+        effects.changes.insert(Changes::EnemiesDead(enemies_to_remove));
 
-        println!("BulletsHitEnemiesRule: {:?}", changes);
-
-        (Some(changes), None, false)
+        false
     }
 }

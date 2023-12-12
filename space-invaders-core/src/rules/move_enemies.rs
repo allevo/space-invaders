@@ -1,6 +1,6 @@
 #![allow(implied_bounds_entailment)]
 
-use crate::{world::World, Tick, Changes};
+use crate::{world::World, Tick, Changes, Effects, Velocity};
 
 use super::Rule;
 
@@ -10,10 +10,10 @@ pub enum Direction {
 }
 
 impl Direction {
-    fn x_delta(&self) -> i32 {
+    fn x_delta(&self, velocity: &Velocity) -> i32 {
         match self {
-            Direction::Left => -1,
-            Direction::Right => 1,
+            Direction::Left => -velocity.x,
+            Direction::Right => velocity.x,
         }
     }
 
@@ -26,26 +26,28 @@ impl Direction {
 }
 
 pub struct MoveEnemiesRule {
-    pub direction: Direction,
+    pub low_bound: i32,
+    pub high_bound: i32,
 }
 impl Rule for MoveEnemiesRule {
-    fn apply(&mut self, world: &mut World, tick: &Tick) -> (Option<Vec<Changes>>, Option<Vec<Box<dyn Rule>>>, bool) {
-        // This is wrong.
-        // TODO: leverage the map width
-        let max = 10;
-        let mut y_delta = 0;
+    fn apply(&mut self, world: &mut World, tick: &Tick, effects: &mut Effects) -> bool {
+        println!("{:?}", world.enemies);
 
-        if tick.0 > 0 && tick.0 % max == 0 {
-            self.direction = self.direction.opposite();
-            y_delta = 1;
+        for enemy in world.enemies.values_mut() {
+            let x = (enemy.position.x as i32) + enemy.velocity.x;
+            println!("enemy.position.x: {}, x: {}", enemy.position.x, x);
+            enemy.position.x = x.max(self.low_bound).min(self.high_bound) as u32;
+
+            let mut y_delta = 0;
+            if enemy.position.x as i32 == self.high_bound || enemy.position.x as i32 == self.low_bound {
+                enemy.velocity.x = -enemy.velocity.x;
+                y_delta = -1;
+            }
+            enemy.position.y = (enemy.position.y as i32 + y_delta) as u32;
         }
 
-        for enemy in &mut world.enemies {
-            let x = (enemy.position.x as i32) + self.direction.x_delta();
-            enemy.position.x = x.max(0) as u32;
-            enemy.position.y += y_delta;
-        }
+        effects.changes.insert(Changes::EnemiesMove);
 
-        (Some(vec![crate::Changes::EnemiesMove]), None, false)
+        false
     }
 }

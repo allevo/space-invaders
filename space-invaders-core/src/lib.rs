@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use rules::Rule;
 
 mod levels;
@@ -16,21 +18,25 @@ impl Tick {
 }
 
 pub struct TickGenerator {
+    frame: u32,
     count: u32,
 }
 impl TickGenerator {
-    pub fn new() -> Self {
-        TickGenerator { count: 0 }
+    pub fn new(frame: u32) -> Self {
+        TickGenerator {
+            frame,
+            count: 0
+        }
     }
 
     pub fn tick(&mut self) -> Tick {
-        let tick = Tick(self.count, self.count % 30 == 0);
+        let tick = Tick(self.count, self.count % self.frame == 0);
         self.count += 1;
         tick
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Changes {
     SpaceshipMove(Position),
     SpaceshipShoot(BulletId),
@@ -41,42 +47,42 @@ pub enum Changes {
     EnemiesMove,
 }
 
+pub struct Effects {
+    changes: HashSet<Changes>,
+    new_rules: Vec<Box<dyn Rule>>,
+}
+
 pub struct Game {
     rules: Vec<Box<dyn Rule>>,
 }
 impl Game {
-    pub fn tick(&mut self, world: &mut World, tick: Tick) -> Vec<Changes> {
-        let mut all_changes = Vec::new();
+    pub fn tick(&mut self, world: &mut World, tick: Tick) -> HashSet<Changes> {
         let mut indexes_to_remove = Vec::new();
-        let mut all_new_rules = Vec::new();
+
+        let mut effects = Effects {
+            changes: HashSet::new(),
+            new_rules: Vec::new(),
+        };
 
         for (index, rule) in self.rules.iter_mut().enumerate() {
             if !rule.should_apply(&tick) {
                 continue;
             }
 
-            let (changes, new_rules, to_remove) = rule.apply(world, &tick);
+            let to_remove = rule.apply(world, &tick, &mut effects);
 
             if to_remove {
                 indexes_to_remove.push(index);
             }
-
-            if let Some(changes) = changes {
-                all_changes.extend(changes);
-            }
-
-            if let Some(new_rules) = new_rules {
-                all_new_rules.extend(new_rules);
-            }
         }
 
-        self.rules.extend(all_new_rules);
+        self.rules.extend(effects.new_rules);
 
         for index in indexes_to_remove.into_iter().rev() {
             self.rules.remove(index);
         }
 
-        all_changes
+        effects.changes
     }
 
     pub fn move_spaceship(&mut self, delta: i32) {
@@ -98,66 +104,68 @@ mod tests {
     #[test]
     fn move_enemies() {
         let mut world = World::new();
-        world.enemies.push(Enemy {
+        world.enemies.insert(EnemyId(0), Enemy {
             id: EnemyId(0),
-            position: Position { x: 0, y: 0 },
+            position: Position { x: 0, y: 200 },
             dimension: Dimension {
                 width: 1,
                 height: 1,
             },
+            velocity: Velocity { x: 1, y: 0 },
             health: 100,
             gun: Gun {},
         });
-        let mut tick_generator = TickGenerator::new();
+        let mut tick_generator = TickGenerator::new(1);
 
         let mut game = Game {
             rules: vec![Box::new(MoveEnemiesRule {
-                direction: Direction::Right,
+                low_bound: 0,
+                high_bound: 10,
             })],
         };
 
-        assert_eq!(world.enemies[0].position, Position { x: 0, y: 0 });
+        assert_eq!(world.enemies[&EnemyId(0)].position, Position { x: 0, y: 200 });
         game.tick(&mut world, tick_generator.tick());
-        assert_eq!(world.enemies[0].position, Position { x: 1, y: 0 });
+        assert_eq!(world.enemies[&EnemyId(0)].position, Position { x: 1, y: 200 });
+        for _ in 0..9 {
+            game.tick(&mut world, tick_generator.tick());
+        }
+        assert_eq!(world.enemies[&EnemyId(0)].position, Position { x: 10, y: 199 });
+
+        game.tick(&mut world, tick_generator.tick());
+        assert_eq!(world.enemies[&EnemyId(0)].position, Position { x: 9, y: 199 });
 
         for _ in 0..9 {
             game.tick(&mut world, tick_generator.tick());
         }
-        assert_eq!(world.enemies[0].position, Position { x: 10, y: 0 });
+        assert_eq!(world.enemies[&EnemyId(0)].position, Position { x: 0, y: 198 });
 
         game.tick(&mut world, tick_generator.tick());
-        assert_eq!(world.enemies[0].position, Position { x: 9, y: 1 });
-
-        for _ in 0..9 {
-            game.tick(&mut world, tick_generator.tick());
-        }
-        assert_eq!(world.enemies[0].position, Position { x: 0, y: 1 });
-
-        game.tick(&mut world, tick_generator.tick());
-        assert_eq!(world.enemies[0].position, Position { x: 1, y: 2 });
+        assert_eq!(world.enemies[&EnemyId(0)].position, Position { x: 1, y: 198 });
     }
 
     #[test]
     fn enemies_fire_bulltes() {
         struct R {}
         impl RandomInRange for R {
-            fn random_boolean(&mut self, _min: u32, _max: u32) -> Option<u32> {
-                Some(0)
+            fn random_boolean(&mut self, ids: Vec<EnemyId>) -> Option<EnemyId> {
+                ids.get(0).copied()
             }
         }
 
         let mut world = World::new();
-        world.enemies.push(Enemy {
+        world.enemies.insert(EnemyId(0), Enemy {
             id: EnemyId(0),
             position: Position { x: 0, y: 0 },
             dimension: Dimension {
                 width: 1,
                 height: 1,
             },
+            velocity: Velocity { x: 0, y: 0 },
             health: 100,
             gun: Gun {},
         });
-        let mut tick_generator = TickGenerator::new();
+        let mut tick_generator = TickGenerator::new(1);
 
         let mut game = Game {
             rules: vec![Box::new(EnemiesFireBulletsRule {
@@ -185,7 +193,7 @@ mod tests {
                 velocity: Velocity { x: 0, y: 1 },
             },
         );
-        let mut tick_generator = TickGenerator::new();
+        let mut tick_generator = TickGenerator::new(1);
 
         let mut game = Game {
             rules: vec![Box::new(MoveBulletRule {
@@ -212,17 +220,18 @@ mod tests {
                 velocity: Velocity { x: 0, y: 1 },
             },
         );
-        world.enemies.push(Enemy {
+        world.enemies.insert(EnemyId(0), Enemy {
             id: EnemyId(0),
             position: Position { x: 0, y: 4 },
             dimension: Dimension {
                 width: 1,
                 height: 1,
             },
+            velocity: Velocity { x: 0, y: 0 },
             health: 1,
             gun: Gun {},
         });
-        let mut tick_generator = TickGenerator::new();
+        let mut tick_generator = TickGenerator::new(1);
 
         let mut game = Game {
             rules: vec![
@@ -256,14 +265,14 @@ mod tests {
         );
         game.tick(&mut world, tick_generator.tick());
         assert_eq!(world.bullets.len(), 0);
-        assert_eq!(world.enemies[0].health, 0);
+        assert_eq!(world.enemies[&EnemyId(0)].health, 0);
     }
 
     #[test]
     fn move_spaceship() {
         let mut world = World::new();
         let mut game = Game { rules: vec![] };
-        let mut tick_generator = TickGenerator::new();
+        let mut tick_generator = TickGenerator::new(1);
 
         let spaceship_x = world.spaceship.position.x;
         game.move_spaceship(-1);

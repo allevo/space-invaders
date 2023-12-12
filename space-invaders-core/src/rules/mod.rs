@@ -7,14 +7,14 @@ mod move_enemies;
 mod move_spaceship;
 mod spaceship_shoot;
 
-use crate::{world::World, Changes, Tick};
+use crate::{world::World, Tick, Effects};
 
 pub trait Rule: Send + Sync {
     fn should_apply(&self, tick: &Tick) -> bool {
         tick.should_play()
     }
 
-    fn apply(&mut self, world: &mut World, tick: &Tick) -> (Option<Vec<Changes>>, Option<Vec<Box<dyn Rule>>>, bool);
+    fn apply(&mut self, world: &mut World, tick: &Tick, effects: &mut Effects) -> bool;
 }
 
 pub use bullet_out_of_map::*;

@@ -1,6 +1,6 @@
 #![allow(implied_bounds_entailment)]
 
-use crate::{Changes, Tick, World};
+use crate::{Changes, Tick, World, Effects};
 
 use super::Rule;
 
@@ -13,20 +13,18 @@ impl Rule for MoveSpaceshipRule {
         true
     }
 
-    fn apply(&mut self, world: &mut World, _tick: &Tick) -> (Option<Vec<Changes>>, Option<Vec<Box<dyn Rule>>>, bool) {
+    fn apply(&mut self, world: &mut World, _tick: &Tick, effects: &mut Effects) -> bool {
         if world.spaceship.position.x == 0 && self.delta < 0 {
-            return (None, None, true);
+            return true;
         }
         if world.spaceship.position.x == world.map.width - 1 && self.delta > 0 {
-            return (None, None, true);
+            return true;
         }
 
         world.spaceship.position.x = (world.spaceship.position.x as i32 + self.delta) as u32;
 
-        (
-            Some(vec![Changes::SpaceshipMove(world.spaceship.position)]),
-            None,
-            true,
-        )
+        effects.changes.insert(Changes::SpaceshipMove(world.spaceship.position));
+
+        true
     }
 }

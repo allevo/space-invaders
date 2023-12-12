@@ -6,12 +6,13 @@ pub struct BulletId(pub u32);
 #[derive(Debug, PartialEq, Hash, Eq, Copy, Clone)]
 pub struct EnemyId(pub u32);
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub struct Position {
     pub x: u32,
     pub y: u32,
 }
 
+#[derive(Debug)]
 pub struct Velocity {
     pub x: i32,
     pub y: i32,
@@ -22,17 +23,21 @@ pub struct Map {
     pub height: u32,
 }
 
+#[derive(Debug)]
 pub struct Gun {}
 
+#[derive(Debug)]
 pub struct Dimension {
     pub width: u32,
     pub height: u32,
 }
 
+#[derive(Debug)]
 pub struct Enemy {
     pub id: EnemyId,
     pub position: Position,
     pub dimension: Dimension,
+    pub velocity: Velocity,
     pub health: u32,
     pub gun: Gun,
 }
@@ -52,7 +57,7 @@ pub struct Bullet {
 
 pub struct World {
     pub map: Map,
-    pub enemies: Vec<Enemy>,
+    pub enemies: HashMap<EnemyId, Enemy>,
     pub spaceship: Spaceship,
     pub bullets: HashMap<BulletId, Bullet>,
     pub bullet_count: u32,
@@ -65,7 +70,7 @@ impl World {
                 width: 100,
                 height: 100,
             },
-            enemies: Vec::new(),
+            enemies: Default::default(),
             spaceship: Spaceship {
                 position: Position { x: 50, y: 0 },
                 dimension: Dimension {

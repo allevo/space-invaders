@@ -2,14 +2,14 @@
 
 use crate::{
     world::{BulletId, World},
-    Changes, Tick,
+    Changes, Tick, Effects,
 };
 
 use super::Rule;
 
 pub struct BulletsDeadRule {}
 impl Rule for BulletsDeadRule {
-    fn apply(&mut self, world: &mut World, _tick: &Tick) -> (Option<Vec<Changes>>, Option<Vec<Box<dyn Rule>>>, bool) {
+    fn apply(&mut self, world: &mut World, _tick: &Tick, effects: &mut Effects) -> bool {
         let bullets_to_remove: Vec<BulletId> = world
             .bullets
             .iter()
@@ -22,10 +22,11 @@ impl Rule for BulletsDeadRule {
         }
 
         if bullets_to_remove.is_empty() {
-            return (None, None, false);
+            return false
         }
 
-        let changes = vec![Changes::BulletsDead(bullets_to_remove)];
-        (Some(changes), None, false)
+        effects.changes.insert(Changes::BulletsDead(bullets_to_remove));
+
+        false
     }
 }
