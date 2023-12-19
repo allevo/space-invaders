@@ -1,6 +1,4 @@
-#![allow(implied_bounds_entailment)]
-
-use crate::{world::World, Tick, Changes, Effects};
+use crate::{world::World, Changes, Effects, Tick};
 
 use super::Rule;
 
@@ -23,7 +21,10 @@ impl Rule for BulletsHitEnemiesRule {
                 let y_range = enemy.position.y..(enemy.position.y + enemy.dimension.height);
 
                 if x_range.contains(&bullet.position.x) && y_range.contains(&bullet.position.y) {
-                    println!("BulletsHitEnemiesRule: a bullet hits the enemy {:?}", enemy.id);
+                    println!(
+                        "BulletsHitEnemiesRule: a bullet hits the enemy {:?}",
+                        enemy.id
+                    );
                     bullet.health -= 1;
 
                     if enemy.health > 0 {
@@ -39,10 +40,12 @@ impl Rule for BulletsHitEnemiesRule {
         }
 
         if enemies_to_remove.is_empty() {
-            return false
+            return false;
         }
 
-        effects.changes.insert(Changes::EnemiesDead(enemies_to_remove));
+        effects
+            .changes
+            .insert(Changes::EnemiesDead(enemies_to_remove));
 
         false
     }

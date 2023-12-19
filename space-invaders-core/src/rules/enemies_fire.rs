@@ -1,8 +1,6 @@
-#![allow(implied_bounds_entailment)]
-
 use crate::{
     world::{Bullet, BulletId, Position, Velocity, World},
-    Changes, Tick, Effects, EnemyId,
+    Changes, Effects, EnemyId, Tick,
 };
 
 use super::Rule;

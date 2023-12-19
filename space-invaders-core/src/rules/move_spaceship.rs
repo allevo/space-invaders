@@ -1,6 +1,4 @@
-#![allow(implied_bounds_entailment)]
-
-use crate::{Changes, Tick, World, Effects};
+use crate::{Changes, Effects, Tick, World};
 
 use super::Rule;
 
@@ -23,7 +21,9 @@ impl Rule for MoveSpaceshipRule {
 
         world.spaceship.position.x = (world.spaceship.position.x as i32 + self.delta) as u32;
 
-        effects.changes.insert(Changes::SpaceshipMove(world.spaceship.position));
+        effects
+            .changes
+            .insert(Changes::SpaceshipMove(world.spaceship.position));
 
         true
     }

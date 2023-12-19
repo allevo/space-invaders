@@ -1,8 +1,6 @@
-#![allow(implied_bounds_entailment)]
-
 use crate::{
     world::{BulletId, World},
-    Changes, Tick, Effects,
+    Changes, Effects, Tick,
 };
 
 use super::Rule;
@@ -22,10 +20,12 @@ impl Rule for BulletsDeadRule {
         }
 
         if bullets_to_remove.is_empty() {
-            return false
+            return false;
         }
 
-        effects.changes.insert(Changes::BulletsDead(bullets_to_remove));
+        effects
+            .changes
+            .insert(Changes::BulletsDead(bullets_to_remove));
 
         false
     }

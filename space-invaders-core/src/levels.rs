@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::*;
 
@@ -21,17 +21,20 @@ pub fn level1() -> (World, Game, TickGenerator) {
         bullets: HashMap::new(),
         bullet_count: 0,
     };
-    world.enemies.insert(EnemyId(0), Enemy {
-        id: EnemyId(0),
-        position: Position { x: 75, y: 299 },
-        dimension: Dimension {
-            width: 16,
-            height: 16,
+    world.enemies.insert(
+        EnemyId(0),
+        Enemy {
+            id: EnemyId(0),
+            position: Position { x: 75, y: 299 },
+            dimension: Dimension {
+                width: 16,
+                height: 16,
+            },
+            velocity: Velocity { x: 5, y: 0 },
+            health: 1,
+            gun: Gun {},
         },
-        velocity: Velocity { x: 5, y: 0 },
-        health: 1,
-        gun: Gun {},
-    });
+    );
 
     struct R {
         should_shoot_numbers: [bool; 500],
@@ -52,10 +55,12 @@ pub fn level1() -> (World, Game, TickGenerator) {
     impl RandomInRange for R {
         fn random_boolean(&mut self, ids: Vec<EnemyId>) -> Option<EnemyId> {
             let should_shoot = self.should_shoot_numbers[self.should_shoot_index];
-            self.should_shoot_index = (self.should_shoot_index + 1) % self.should_shoot_numbers.len();
+            self.should_shoot_index =
+                (self.should_shoot_index + 1) % self.should_shoot_numbers.len();
             if should_shoot {
                 let enemy_id_index = self.enemy_id_index_numbers[self.enemy_id_index_index];
-                self.enemy_id_index_index = (self.enemy_id_index_index + 1) % self.enemy_id_index_numbers.len();
+                self.enemy_id_index_index =
+                    (self.enemy_id_index_index + 1) % self.enemy_id_index_numbers.len();
                 ids.get(enemy_id_index).copied()
             } else {
                 None
@@ -63,6 +68,13 @@ pub fn level1() -> (World, Game, TickGenerator) {
         }
     }
 
+    let shoot_rule = SpaceshipShootRule {
+        shooting: false,
+        last_shoot_tick_time: -1000,
+        shoot_tick_period: 50,
+    };
+    let rc = Arc::new(shoot_rule);
+    let a = Box::new(rc.clone());
     let game = Game {
         rules: vec![
             Box::new(MoveEnemiesRule {
@@ -75,7 +87,9 @@ pub fn level1() -> (World, Game, TickGenerator) {
             Box::new(OutOfMapBulletsRule {}),
             Box::new(BulletsDeadRule {}),
             Box::new(BulletsHitEnemiesRule {}),
+            a,
         ],
+        shoot_rule: Some(rc),
     };
 
     (world, game, TickGenerator::new(30))

@@ -63,6 +63,12 @@ pub struct World {
     pub bullet_count: u32,
 }
 
+impl Default for World {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl World {
     pub fn new() -> Self {
         Self {

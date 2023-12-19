@@ -1,6 +1,4 @@
-#![allow(implied_bounds_entailment)]
-
-use crate::{world::World, Tick, Effects};
+use crate::{world::World, Effects, Tick};
 
 use super::Rule;
 

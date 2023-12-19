@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use space_invaders_core::{Game, TickGenerator, World, Changes, BulletId, Dimension};
+use space_invaders_core::{BulletId, Changes, Dimension, Game, TickGenerator, World};
 
 #[derive(Resource)]
 struct SpaceInvadersResource {
@@ -24,32 +24,49 @@ struct BulletComponent {
     id: BulletId,
 }
 
-const ENEMY_Z : f32 = 1.0;
+const ENEMY_Z: f32 = 1.0;
 const SPACESHIP_Z: f32 = 1.0;
 const BULLET_Z: f32 = 2.0;
 
 fn run_tick(
     mut commands: Commands,
     mut space_invaders: ResMut<SpaceInvadersResource>,
-    mut spaceship: Query<&mut Transform, (With<SpaceshipComponent>, Without<BulletComponent>, Without<EnemyComponent>)>,
-    mut bullets: Query<(Entity, &BulletComponent, &mut Transform), (Without<SpaceshipComponent>, Without<EnemyComponent>)>,
-    mut enemies: Query<(Entity, &EnemyComponent, &mut Transform), (Without<SpaceshipComponent>, Without<BulletComponent>)>,
+    mut spaceship: Query<
+        &mut Transform,
+        (
+            With<SpaceshipComponent>,
+            Without<BulletComponent>,
+            Without<EnemyComponent>,
+        ),
+    >,
+    mut bullets: Query<
+        (Entity, &BulletComponent, &mut Transform),
+        (Without<SpaceshipComponent>, Without<EnemyComponent>),
+    >,
+    mut enemies: Query<
+        (Entity, &EnemyComponent, &mut Transform),
+        (Without<SpaceshipComponent>, Without<BulletComponent>),
+    >,
     asset_server: Res<AssetServer>,
 ) {
     println!("----------");
     let space_invaders = &mut *space_invaders;
-    let changes = space_invaders.game.tick(&mut space_invaders.world, space_invaders.tick_generator.tick());
+    let changes = space_invaders.game.tick(
+        &mut space_invaders.world,
+        space_invaders.tick_generator.tick(),
+    );
 
     for change in changes {
         println!("change: {:?}", change);
         match change {
             Changes::SpaceshipMove(new_spaceship_position) => {
-                let mut spaship_transform = spaceship.get_single_mut().expect("Spaceship has to exist");
+                let mut spaship_transform =
+                    spaceship.get_single_mut().expect("Spaceship has to exist");
                 spaship_transform.translation = to_bevy_coords(
                     &space_invaders.world,
-                    &new_spaceship_position, 
+                    &new_spaceship_position,
                     &space_invaders.world.spaceship.dimension,
-                    SPACESHIP_Z
+                    SPACESHIP_Z,
                 );
             }
             Changes::BulletsDead(bullet_ids) => {
@@ -60,14 +77,20 @@ fn run_tick(
                 }
             }
             Changes::SpaceshipShoot(bullet_id) => {
-                println!("bullet position {:?}", space_invaders.world.bullets[&bullet_id].position);
+                println!(
+                    "bullet position {:?}",
+                    space_invaders.world.bullets[&bullet_id].position
+                );
                 commands.spawn((
                     SpriteBundle {
                         texture: asset_server.load("bullet.png"),
                         transform: Transform::from_translation(to_bevy_coords(
                             &space_invaders.world,
                             &space_invaders.world.bullets[&bullet_id].position,
-                            &Dimension { width: 1, height: 1 },
+                            &Dimension {
+                                width: 1,
+                                height: 1,
+                            },
                             BULLET_Z,
                         )),
                         ..default()
@@ -84,8 +107,11 @@ fn run_tick(
                 bullet_transform.translation = to_bevy_coords(
                     &space_invaders.world,
                     &bullet.position,
-                    &Dimension { width: 1, height: 1 },
-                    BULLET_Z
+                    &Dimension {
+                        width: 1,
+                        height: 1,
+                    },
+                    BULLET_Z,
                 );
             }
             Changes::EnemiesDead(enemy_ids) => {
@@ -103,7 +129,7 @@ fn run_tick(
                         &space_invaders.world,
                         &enemy.position,
                         &enemy.dimension,
-                        ENEMY_Z
+                        ENEMY_Z,
                     );
                 }
             }
@@ -114,7 +140,10 @@ fn run_tick(
                         transform: Transform::from_translation(to_bevy_coords(
                             &space_invaders.world,
                             &space_invaders.world.bullets[&bullet_id].position,
-                            &Dimension { width: 1, height: 1 },
+                            &Dimension {
+                                width: 1,
+                                height: 1,
+                            },
                             BULLET_Z,
                         )),
                         ..default()
@@ -141,11 +170,7 @@ fn handle_spaceship_movement(
     if delta == 0 {
         return;
     }
-
-    let space_invaders = &mut *space_invaders;
-    space_invaders
-        .game
-        .move_spaceship(delta);
+    space_invaders.game.move_spaceship(delta);
 }
 
 fn handle_spaceship_shot(
@@ -155,8 +180,6 @@ fn handle_spaceship_shot(
     if !keyboard_input.just_pressed(KeyCode::Space) {
         return;
     }
-
-    let space_invaders = &mut *space_invaders;
     space_invaders.game.shoot();
 }
 
@@ -194,60 +217,6 @@ fn setup(
 ) {
     commands.spawn(Camera2dBundle::default());
 
-    /*
-    println!("setup {}", to_bevy_coords(
-        &space_invaders.world,
-        &space_invaders.world.spaceship.position,
-        &space_invaders.world.spaceship.dimension,
-        SPACESHIP_Z,
-    ));
-
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("enemy.png"),
-            transform: Transform {
-                translation: Vec3::new(0.0, 0.0, 0.0),
-                scale: Vec3::new(1.0 / 16.0, 1.0 / 16.0, 1.0),
-                ..default()
-            },
-            ..default()
-        },
-    ));
-
-
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("enemy.png"),
-            transform: Transform {
-                translation: to_bevy_coords(
-                    &space_invaders.world,
-                    &space_invaders.world.spaceship.position,
-                    &space_invaders.world.spaceship.dimension,
-                    SPACESHIP_Z,
-                ),
-                scale: Vec3::new(1.0 / 16.0, 1.0 / 16.0, 1.0),
-                ..default()
-            },
-            ..default()
-        },
-        SpaceshipComponent,
-    ));
-
-
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("enemy.png"),
-            transform: Transform {
-                translation: Vec3::new(75.0, 0.0, 0.0),
-                scale: Vec3::new(1.0 / 16.0, 1.0 / 16.0, 1.0),
-                ..default()
-            },
-            ..default()
-        },
-        SpaceshipComponent,
-    ));
-    */
-
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("spaceship.png"),
@@ -264,21 +233,24 @@ fn setup(
 
     let enemy_texture_handle = asset_server.load("enemy.png");
     for enemy in space_invaders.world.enemies.values() {
-        commands.spawn((SpriteBundle {
-            texture: enemy_texture_handle.clone(),
-            transform: Transform::from_translation(to_bevy_coords(
-                &space_invaders.world,
-                &enemy.position,
-                &enemy.dimension,
-                ENEMY_Z,
-            )),
-            ..default()
-        }, EnemyComponent { id: enemy.id }));
+        commands.spawn((
+            SpriteBundle {
+                texture: enemy_texture_handle.clone(),
+                transform: Transform::from_translation(to_bevy_coords(
+                    &space_invaders.world,
+                    &enemy.position,
+                    &enemy.dimension,
+                    ENEMY_Z,
+                )),
+                ..default()
+            },
+            EnemyComponent { id: enemy.id },
+        ));
     }
 }
 
 fn to_bevy_coords(
-    world: &space_invaders_core::World,
+    _world: &space_invaders_core::World,
     position: &space_invaders_core::Position,
     dimension: &Dimension,
     z: f32,
